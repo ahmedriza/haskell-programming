@@ -25,43 +25,70 @@ import Data.Char
 -- ’P’. And so on, so “meet at dawn” encoded with the keyword “ALLY”
 -- becomes “MPPR AE OYWY.”
 --
--- A | B | C | D | E | F | G | H | I | J | K | L | M | N | O | P | Q | R | S | T | U | V | W | X | Y | Z |
--- 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10| 11| 12| 13| 14| 15| 16| 17| 18| 19| 20| 21| 22| 23| 24| 25|
 
 alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-msg = "MEET AT DAWN"
-key = "ALLY"
-
-shiftMessage :: String -> [Int]
-shiftMessage msg = undefined
-
-f msg key = res
+-- Encode the given message
+encode msg key = res
   where
-    -- list of tuple of (char,index) of the msg
-    -- e.g. if msg = 'AHM', then
-    -- posTuples = [('A', 0), ('H', 1), ('M', 2)]
-    -- Note that we filter out spaces from the msg, since spaces are not encoded.
-    posTuples = zip (filter (/= ' ') msg) [0..length msg]
-    -- Just the positions themselves
-    pos = map snd posTuples
+    msg' = map toUpper msg
+    alignments = keyAlignment key msg' 0
+    shifts = zip msg' $ map getPosition alignments
+    res = map rotate shifts
 
-    -- For each index, get the corresponding letter of the key
-    keyCodes = map (rotateKey key) pos
+-- Decode an encoded message with the same key
+decode enc key = undefined
 
-    -- For each char in keyCodes, get their alphabetic position.
-    -- These positions will be the values by which we need to shift the characters of the
-    -- msg.
+--------------------------------------------------------------------------------
 
-    res = map getShift keyCodes
-                   
+rotate :: (Char, Int) -> Char
+rotate (c, n) = case c `elem` alphabet of
+  True -> alphabet !! newPosition
+    where
+      pos = getPosition (toUpper c)
+      newPosition = (pos + n) `mod` (length alphabet)
+  otherwise -> c
+
+-- Get the position of the given char c in the alphabet, 'A' = 0, ..., 'Z' = 25
+-- If the character is not part of alphabet, then return 0.
+getPosition :: Char -> Int
+getPosition c = case c `elem` alphabet of
+                  True -> ord (toUpper c) - ord 'A'
+                  otherwise -> 0
+
+-- Align the original msg with characters from the key
+--
+-- MEET AT DAWN
+-- ALLY AL LYAL
+--
+keyAlignment :: String -> String -> Int -> String
+keyAlignment key  [] _ =[]
+keyAlignment key (x:xs) n = case x `elem` alphabet of
+  True      -> rotateKey key n : keyAlignment key xs (n+1)
+  otherwise -> x : keyAlignment key xs n
+
 -- Get the character at position n in the given key
 -- If n > length of the key, then wrap around the key
 rotateKey :: String -> Int -> Char
-rotateKey key n = c
-  where
-    len = length key
-    c = key !! (n `mod` len)
+rotateKey key n = key !! (n `mod` (length key))
 
-getShift :: Char -> Int
-getShift c = ord (toUpper c) - ord 'A'
+
+test1 :: IO ()
+test1 = do
+  let msg_ = "MEET AT DAWN"
+      key_ = "ALLY"
+      result_ = "MPPR AE OYWY"
+      outcome = case encode msg_ key_ == result_ of
+                  True -> "Success"
+                  False -> "Failed"
+  print outcome
+
+test2 :: IO ()
+test2 = do
+  let msg_ = "ATTACKATDAWN"
+      key_ = "LEMON"
+      result_ = "LXFOPVEFRNHR"
+      outcome = case encode msg_ key_ == result_ of
+                  True -> "Success"
+                  False -> "Failed"
+  print outcome
