@@ -1,3 +1,5 @@
+import Data.Char
+
 --
 -- Chapter 11
 --
@@ -87,4 +89,61 @@ mapOkay = if mapTree (+1) testTree' == mapExpected
 -- your implementation passes the tests.
 
 
+
+-- Exercises
+
+-- As-Patterns
+
+f :: (Show a) => (a, b) -> IO (a, b)
+f t@(a,b) = do
+  print a
+  return (t)
+
+-- Use as-patterns for the following exercises
+
+-- This should show True if and only if all the values in the first list appear in the second list,
+-- though they need not be contiguous
+-- Examples
+-- isSubSeqOf "blah" "blahwoot" -> True
+-- isSubSeqOf "blah" "wootblah" -> True
+-- isSubSeqOf "blah" "wboloath" -> True
+-- isSubSeqOf "blah" "wootbla"  -> False
+-- isSubSeqOf "blah" "halbwoot" -> False
+-- isSubSeqOf "blah" "blawhoot" -> True
+--
+-- Remember that the subsequence has to be in the original order
+isSubSeqOf :: (Eq a) => [a] -> [a] -> Bool
+isSubSeqOf [] _ = True
+isSubSeqOf _ [] = False
+isSubSeqOf u@(x:xs) v@(y:ys) 
+  | x == y = isSubSeqOf xs ys
+  | otherwise = isSubSeqOf u ys
+
+-- Split a sentence into words, then tuple each word with the capitalized form of each.
+-- e.g
+-- capitalizeWords "hello world" -> [("hello","Hello"), ("world", "World")]
+--
+capitalizeWords :: String -> [(String, String)]
+capitalizeWords s = go (words s)
+  where
+    go [] = []
+    go (w@(x:xs):ys) = (w, toUpper x : xs) : go ys
+
+
+-- Language exercises
+
+-- Write a function that capitalizes a word
+
+capitalizeWord :: String -> String
+capitalizeWord [] = []
+capitalizeWord (x:xs) = toUpper x : xs
+
+-- Write a function that capitalizes sentences in a paragraph. Recognize when a
+-- new sentence has begun by checking for periods.
+-- Reuse the capitalizeWord function.
+--
+-- capitalizeParagraph "blah. woot ha." -> "Blah. Woot ha."
+--
+capitalizeParagraph :: String -> String
+capitalizeParagraph (x:xs) = toUpper x : xs
 

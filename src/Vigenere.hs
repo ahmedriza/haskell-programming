@@ -26,69 +26,38 @@ import Data.Char
 -- becomes “MPPR AE OYWY.”
 --
 
-alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+msg_ = "MEET AT DAWN"
+key_ = "ALLY"
 
--- Encode the given message
-encode msg key = res
-  where
-    msg' = map toUpper msg
-    alignments = keyAlignment key msg' 0
-    shifts = zip msg' $ map getPosition alignments
-    res = map rotate shifts
+-------------------------------------------------------------------------------------
+------- MEET AT DAWN
+------- ALLYALLYALLY
+-------------------------------------------------------------------------------------
 
--- Decode an encoded message with the same key
-decode enc key = undefined
+ff :: String -> String -> [Int]
+ff msg key = map ord $ take (length msg) $ cycle key
 
---------------------------------------------------------------------------------
+gg msg key = zip (map ord msg) (ff msg key)
 
-rotate :: (Char, Int) -> Char
-rotate (c, n) = case c `elem` alphabet of
-  True -> alphabet !! newPosition
-    where
-      pos = getPosition (toUpper c)
-      newPosition = (pos + n) `mod` (length alphabet)
-  otherwise -> c
+hh :: (Int, Int) -> Int
+hh (a, b) = (a + b) `mod` 128
 
--- Get the position of the given char c in the alphabet, 'A' = 0, ..., 'Z' = 25
--- If the character is not part of alphabet, then return 0.
-getPosition :: Char -> Int
-getPosition c = case c `elem` alphabet of
-                  True -> ord (toUpper c) - ord 'A'
-                  otherwise -> 0
+enc' msg_ key_ = map chr (map hh (gg msg_ key_))
 
--- Align the original msg with characters from the key
---
--- MEET AT DAWN
--- ALLY AL LYAL
---
-keyAlignment :: String -> String -> Int -> String
-keyAlignment key  [] _ =[]
-keyAlignment key (x:xs) n = case x `elem` alphabet of
-  True      -> rotateKey key n : keyAlignment key xs (n+1)
-  otherwise -> x : keyAlignment key xs n
+-------------------------------------------------------------------------------------
 
--- Get the character at position n in the given key
--- If n > length of the key, then wrap around the key
-rotateKey :: String -> Int -> Char
-rotateKey key n = key !! (n `mod` (length key))
+kk :: (Int, Int) -> Int
+kk (a, b) = (a - b) `mod` 128 -- if (a < b) then (128 + a - b) else (a - b)
 
+dec' msg key = map chr $ map kk $ zip (map ord msg) (ff msg key)
 
-test1 :: IO ()
-test1 = do
-  let msg_ = "MEET AT DAWN"
-      key_ = "ALLY"
-      result_ = "MPPR AE OYWY"
-      outcome = case encode msg_ key_ == result_ of
-                  True -> "Success"
-                  False -> "Failed"
-  print outcome
+-------------------------------------------------------------------------------------
 
-test2 :: IO ()
-test2 = do
-  let msg_ = "ATTACKATDAWN"
-      key_ = "LEMON"
-      result_ = "LXFOPVEFRNHR"
-      outcome = case encode msg_ key_ == result_ of
-                  True -> "Success"
-                  False -> "Failed"
-  print outcome
+d = [(77,65),(69,76),(69,76),(84,89),(32,65),(65,76),(84,76),(32,89),(68,65),(65,76),(87,76),(78,89)]
+e = [(14,65),(17,76),(17,76),(45,89),(97,65),(13,76),(32,76),(121,89),(5,65),(13,76),(35,76),(39,89)]
+
+msg__ = "ATTACKATDAWN"
+key__ = "LEMON"
+result__ = "LXFOPVEFRNHR"
+
