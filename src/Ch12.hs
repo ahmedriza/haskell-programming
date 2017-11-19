@@ -107,8 +107,9 @@ countVowels :: String -> Integer
 countVowels  = fromIntegral . length . filter isVowel
 
 isVowel :: Char -> Bool
-isVowel c = c `elem` "aeiou"
+isVowel c = c `elem` vowels
 
+vowels = "aeiou"
 
 --Validate the word
 -------------------
@@ -121,10 +122,167 @@ isVowel c = c `elem` "aeiou"
 
 newtype Word' = Word' String deriving (Eq, Show)
 
-vowels = "aeiou"
-
 mkWord :: String -> Maybe Word'
-mkWord = undefined
+mkWord str
+  | numVowels > numConsonants = Nothing
+  | otherwise                 = Just (Word' str)
+  where
+    numVowels = countVowels str
+    numConsonants = (fromIntegral . length) str - numVowels
 
 
+-- You’ll be presented with a datatype to represent the natural numbers.
+-- The only values representable with the naturals are whole numbers
+-- from zero to infinity. Your task will be to implement functions to
+-- convert Naturals to Integers and Integers to Naturals. The conversion
+-- from Naturals to Integers won’t return Maybe because Integer is a strict
+-- superset of Natural. Any Natural can be represented by an Integer,
+-- but the same is not true of any Integer. Negative numbers are not
+-- valid natural numbers.
+
+data Nat = Zero
+         | Succ Nat deriving (Eq, Show)
+
+-- natToInteger Zero
+-- 0
+-- natToInteger (Succ Zero)
+-- 1
+-- natToInteger (Succ (Succ Zero))
+-- 2
+natToInteger :: Nat -> Integer
+natToInteger Zero = 0
+natToInteger (Succ n) = 1 + natToInteger n
+
+integerToNat :: Integer -> Maybe Nat
+integerToNat n
+  | n < 0 = Nothing
+  | otherwise = Just (go n)
+  where
+    go 0 = Zero    
+    go n = Succ (go (n-1))
+
+----
+
+-- Simple boolean checks for Maybe values
+-- >>> isJust (Just 1)
+-- True
+-- >>> isJust Nothing
+-- False
+isJust :: Maybe a -> Bool
+isJust Nothing = False
+isJust (Just _) = True
+
+-- >>> isNothing (Just 1)
+-- False
+-- >>> isNothing Nothing
+-- True
+isNothing :: Maybe a -> Bool
+isNothing Nothing = True
+isNothing (Just _) = False
+
+-- The following is the Maybe catamorphism. You can turn a Maybe
+-- value into anything else with this.
+-- >>> mayybee 0 (+1) Nothing
+-- 0
+-- >>> mayybee 0 (+1) (Just 1)
+-- 2
+mayybee :: b -> (a -> b) -> Maybe a -> b
+mayybee acc f Nothing = acc
+mayybee acc f (Just a) = mayybee (f a) f Nothing
+
+-- In case you just want to provide a fallback value
+-- Try writing it in terms of the maybe catamorphism
+-- >> fromMaybe 0 Nothing
+-- 0
+-- >>> fromMaybe 0 (Just 1)
+-- 1
+fromMaybe :: a -> Maybe a -> a
+fromMaybe a b = mayybee a id b
+
+-- Converting between List and Maybe.
+-- >>> listToMaybe [1, 2, 3]
+-- Just 1
+-- >>> listToMaybe []
+-- Nothing
+listToMaybe :: [a] -> Maybe a
+listToMaybe [] = Nothing
+listToMaybe (x:_) = Just x
+
+-- >>> maybeToList (Just 1)
+-- [1]
+-- >>> maybeToList Nothing
+-- []
+maybeToList :: Maybe a -> [a]
+maybeToList Nothing = []
+maybeToList (Just a) = [a]
+
+-- For when we want to drop the Nothing values from our list.
+-- >>> catMaybes [Just 1, Nothing, Just 2]
+-- [1, 2]
+-- >>> let xs = take 3 $ repeat Nothing
+-- >>> catMaybes xs
+-- []
+catMaybes :: [Maybe a] -> [a]
+catMaybes [] = []
+catMaybes (Nothing : xs) = catMaybes xs
+catMaybes (Just x : xs) = x : catMaybes xs
   
+-- You’ll see this called “sequence” later.
+-- >>> flipMaybe [Just 1, Just 2, Just 3]
+-- Just [1, 2, 3]
+-- >>> flipMaybe [Just 1, Nothing, Just 3]
+-- Nothing
+flipMaybe :: [Maybe a] -> Maybe [a]
+flipMaybe [] = Just []
+flipMaybe (Nothing : _) = Nothing
+flipMaybe (Just x : xs) = case flipMaybe xs of
+  Just ys -> Just (x:ys)
+  Nothing -> Nothing
+
+-- Small Library for Either
+
+-- Try to eventually arrive at a solution that uses foldr, even if
+-- earlier versions don’t use foldr.
+
+lefts' :: [Either a b] -> [a]
+lefts' xs = foldr f [] xs
+  where
+    f :: Either a b -> [a] -> [a]
+    f (Left a) acc = a : acc
+    f (Right _) acc = acc
+
+rights' :: [Either a b] -> [b]
+rights' xs = foldr f [] xs
+  where
+    f :: Either a b -> [b] -> [b]
+    f (Left _) acc = acc
+    f (Right b) acc = b : acc
+
+partitionEithers' :: [Either a b] -> ([a], [b])
+partitionEithers' xs = foldr f ([],[]) xs 
+  where
+    f :: Either a b -> ([a], [b]) -> ([a],[b])
+    f (Left a) (as, bs) = (a:as, bs)
+    f (Right b) (as, bs) = (as, b:bs)
+
+eitherMaybe' :: (b -> c) -> Either a b -> Maybe c
+eitherMaybe' _ (Left _) = Nothing
+eitherMaybe' f (Right b) = Just (f b)
+
+--  This is a general catamorphism for Either values.
+either' :: (a -> c)
+        -> (b -> c)
+        -> Either a b
+        -> c
+either' f _ (Left a) = f a
+either' _ g (Right b) = g b
+
+-- Same as before, but use the either' function you just wrote.
+eitherMaybe'' :: (b -> c)
+              -> Either a b
+              -> Maybe c
+eitherMaybe'' f v = either' (const Nothing) (Just . f) v
+
+
+-- Unfolds
+

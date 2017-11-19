@@ -1,0 +1,28 @@
+Starting:
+  stack ghci --with-ghc intero "--docker-run-args=--interactive=true --tty=false" --no-build --no-load --ghci-options -odir=/home/ahmed/Work/haskell/haskell-programming/.stack-work/intero/intero12588a8Q --ghci-options -hidir=/home/ahmed/Work/haskell/haskell-programming/.stack-work/intero/intero12588a8Q haskell-programming
+Intero 0.1.23 (GHC 8.0.2)
+Type :intro and press enter for an introduction of the standard commands.
+
+*** WARNING: /home/ahmed/Work/haskell/haskell-programming/.stack-work/intero is writable by someone else, IGNORING!
+Prelude> [1 of 1] Compiling Main             ( /home/ahmed/Work/haskell/haskell-programming/src/Ch12.hs, interpreted )
+Ok, modules loaded: Main.
+Collecting type info for 1 module(s) ... 
+*Main> [1 of 1] Compiling Main             ( /home/ahmed/Work/haskell/haskell-programming/src/Ch12.hs, interpreted )
+Ok, modules loaded: Main.
+Collecting type info for 1 module(s) ... 
+*Main> vowel
+
+<interactive>:4:1: error:
+    • Variable not in scope: vowel
+    • Pserhaps you meant ‘vowels’ (line 124)
+*Main> vowels
+"aeiou"
+*Main> 
+*Main> 
+*Main> [1 of 1] Compiling Main             ( /home/ahmed/Work/haskell/haskell-programming/src/Ch12.hs, interpreted )
+Ok, modules loaded: Main.
+Collecting type info for 1 module(s) ... 
+*Main> mkWord "Use the Maybe type to write a function that counts the number of"
+Just (Word' "Use the Maybe type to write a function that counts the number of")
+*Main> 
+*Main> mkWord "Use the aeiou amaa vowvoaieu at oooeiaa the number of"
