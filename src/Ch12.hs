@@ -286,3 +286,131 @@ eitherMaybe'' f v = either' (const Nothing) (Just . f) v
 
 -- Unfolds
 
+sample = take 10 $ iterate (+1) 0
+
+-- unfoldr :: (b -> Maybe (a, b)) -> b -> [a]
+
+sample' = take 10 $ unfoldr (\b -> Just (b, b+1)) 0
+
+mehSum :: Num a => [a] -> a
+mehSum xs = go xs 0
+  where
+    go [] acc = acc
+    go (x:xs) acc = go xs (x+acc)
+
+niceSum :: Num a => [a] -> a
+niceSum xs = foldl' (+) 0 xs
+
+mehProduct :: Num a => [a] -> a
+mehProduct xs = go xs 1
+  where
+    go [] acc = acc
+    go (x:xs) acc = go xs (x*acc)
+
+niceProduct :: Num a => [a] -> a
+niceProduct = foldl' (*) 1
+
+mehConcat :: [[a]] -> [a]
+mehConcat xs = go xs []
+  where
+    go [] acc = acc
+    go (x:xs) acc = go xs (acc ++ x)
+
+niceConcat :: [[a]] -> [a]
+niceConcat = foldr (++) []
+
+------------------------
+
+-- Write the function myIterate using direct recursion. Compare
+-- the behavior with the built-in iterate to gauge correctness. Do
+-- not look at the source or any examples of iterate so that you
+-- are forced to do this yourself.
+
+myIterate :: (a -> a) -> a -> [a]
+myIterate f n = n : myIterate f (f n)
+
+testMyIterate = take 10 $ myIterate (+1) 0
+
+-- Write the function myUnfoldr using direct recursion. Compare
+-- with the built-in unfoldr to check your implementation. Again,
+-- don’t look at implementations of unfoldr so that you figure it
+-- out yourself.
+
+myUnfoldr :: (b -> Maybe (a, b))
+          -> b
+          -> [a]
+myUnfoldr f b = case f b of
+  Nothing      -> []
+  Just (a, b') -> a : myUnfoldr f b'
+
+testMyUnfoldr = (take 10 $ unfoldr (\b -> Just (b*2, b+2)) 0) ==
+  (take 10 $ myUnfoldr (\b -> Just (b*2, b+2)) 0)
+
+
+-- Rewrite myIterate into betterIterate using myUnfoldr. A hint —
+-- we used unfoldr to produce the same results as iterate earlier.
+-- Do this with different functions and see if you can abstract the
+-- structure out.
+--
+-- Remember, your betterIterate should have the same results as
+-- iterate.
+
+betterIterate :: (a -> a) -> a -> [a]
+betterIterate f = myUnfoldr (\a -> Just (a, f a)) 
+  
+testBetterIterate = take 10 $ betterIterate (+1) 0
+
+--------------------------------------
+-- Finally something other than a list
+--------------------------------------
+
+data BinaryTree a = Leaf
+                  | Node (BinaryTree a) a (BinaryTree a)
+                  deriving (Eq, Ord, Show)
+
+-- Write unfold for BinaryTree
+unfold :: (a -> Maybe (a, b, a))
+       -> a
+       -> BinaryTree b
+unfold = undefined
+
+-- Make a tree builder
+-- Using the unfold function you've made for BinaryTree, write the following function:
+treeBuild :: Integer -> BinaryTree Integer
+treeBuild n = undefined
+
+-- You should be producing results that look like the following
+
+-- treeBuild 0
+-- Leaf
+
+-- treeBuild 1
+-- Node Leaf 0 Leaf
+
+-- treeBuild 2
+-- Node (Node Leaf 1 Leaf)
+-- 0
+-- (Node Leaf 1 Leaf)
+
+-- treeBuild 3
+-- Node (Node (Node Leaf 2 Leaf)
+--            1
+--            (Node Leaf 2 Leaf))
+--      0
+--      (Node (Node Leaf 2 Leaf)
+--            1
+--            (Node Leaf 2 Leaf))
+
+-- Or in a slightly different representation
+--             0
+--
+--             0
+--            / \
+--           1   1
+--
+--             0
+--            / \
+--           1   1
+--          / \ / \
+--         2  2 2  2
+--
