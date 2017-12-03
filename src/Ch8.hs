@@ -56,12 +56,26 @@ mc91 n
 
 
 digitToWord :: Int -> String
-digitToWord n = undefined
+digitToWord 0 = "zero"
+digitToWord 1 = "one"
+digitToWord 2 = "two"
+digitToWord 3 = "three"
+digitToWord 4 = "four"
+digitToWord 5 = "five"
+digitToWord 6 = "six"
+digitToWord 7 = "seven"
+digitToWord 8 = "eight"
+digitToWord 9 = "nine"
 
 digits :: Int -> [Int]
-digits = undefined
+digits 0 = [0]
+digits n = go (n `divMod` 10) []
+  where
+    go :: (Int, Int) -> [Int] -> [Int]
+    go (0, 0) acc = acc
+    go (x, y) acc = go (x `divMod` 10) (y : acc)
 
 wordNumber :: Int -> String
-wordNumber n = undefined
+wordNumber n = concat . intersperse "-" $ map digitToWord (digits n)
 
 
