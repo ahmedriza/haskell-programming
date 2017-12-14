@@ -1,5 +1,13 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+
 import Data.Semigroup
-import Test.QuickCheck
+import Test.QuickCheck hiding (Success, Failure)
+-- import Test.QuickCheck.Poly
+-- import Test.QuickCheck.Function
+import Text.Show.Functions
+
+import Generics.Deriving
 
 ---------------------------------------------------------
 -- Chapter 15 SemiGroup Exercises
@@ -150,7 +158,7 @@ type OrAssoc a b = Or a b -> Or a b -> Or a b -> Bool
 
 ------------
 
-newtype Combine a b = Combine { unCombine :: (a -> b) }
+newtype Combine a b = Combine { unCombine :: a -> b } deriving Generic
 
 f = Combine $ \n -> Sum (n + 1)
 g = Combine $ \n -> Sum (n - 1)
@@ -182,10 +190,53 @@ combineGen = do
   f <- arbitrary
   return (Combine f)
 
+instance (CoArbitrary a, Arbitrary b) => Arbitrary (Combine a b) where
+  arbitrary = combineGen
+
 type CombineAssoc a b = Combine a b -> Combine a b -> Combine a b -> Bool  
 
-instance Eq (Combine a b) where
-  (==) (Combine f) (Combine g) = undefined
+instance Show (Combine a b) where
+  show (Combine f) = "Combine: " <> (show f)
+  
+prop_fun :: (Int -> Int) -> Int -> Bool
+prop_fun f x = (f . (+2))x  == (f . (*2)) x
+
+gen :: Gen Int
+gen = (variant 100 (arbitrary :: Gen Int))
+
+instance (Arbitrary a, CoArbitrary b) => CoArbitrary (Combine a b)
+                     
+instance (Num a, Eq b) => Eq (Combine a b) where
+  (==) (Combine f) (Combine g) = f x == g x
+    where x = (-1)
+
+-- This needs Test.QuickCheck.Poly
+-- prop_MapFilter :: (Int -> Int) -> (Int -> Bool) -> [Int] -> Bool
+-- prop_MapFilter f p (xs :: [A]) =
+--  map f (filter p xs) == filter p (map f xs)
+  
+------------
+
+data Validation a b = Failure a | Success b deriving (Eq, Show)
+
+instance Semigroup a => Semigroup (Validation a b) where
+  (<>) (Success s) (Failure f) = Success s
+  (<>) (Success s1) (Success s2) = Success s1
+  (<>) (Failure f) (Success s) = Success s
+  (<>) (Failure f1) (Failure f2) = Failure (f1 <> f2)
+
+testValidation :: IO ()
+testValidation = do
+  let failure :: String -> Validation String Int
+      failure = Failure
+      success :: Int -> Validation String Int
+      success = Success
+
+  print $ success 1 <> failure "blah"      -- success 1
+  print $ failure "woot" <> failure "blah" -- Failure "wootblah"
+  print $ success 1 <> success 2           -- success 1
+  print $ failure "woot" <> success 2      -- success 2
+  return ()
 
 ------------
 
@@ -202,4 +253,6 @@ main = do
   quickCheck (semiGroupAssoc :: BoolDisjAssoc)
   quickCheck (semiGroupAssoc :: OrAssoc Int Int)
   quickCheck (semiGroupAssoc :: OrAssoc Float Float)
-  -- quickCheck (semiGroupAssoc :: CombineAssoc Int (Sum Int))
+  quickCheck (semiGroupAssoc :: CombineAssoc Int (Sum Int))
+  -- quickCheck prop_fun
+  -- quickCheck prop_MapFilter
