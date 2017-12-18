@@ -1,0 +1,9 @@
+resolver: nightly-2017-09-04
+packages:
+- '.'
+- attoparsec-iso8601
+flags:
+  aeson:
+    fast: true
+  attoparsec-iso8601:
+    fast: true
