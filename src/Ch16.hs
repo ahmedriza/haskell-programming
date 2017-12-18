@@ -34,3 +34,7 @@ data MyEither a
 instance Functor MyEither where
   fmap f MyNothing = MyNothing
   fmap f (MyJust a) = MyJust (f a)
+
+data FixMePls a = FixMe  | Pls a  deriving (Eq, Show)
+
+
