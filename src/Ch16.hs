@@ -2,7 +2,7 @@
 
 module Ch16 where
 
-import Test.QuickCheck
+import           Test.QuickCheck
 
 ---------------------------
 -- Chapter 16
@@ -10,7 +10,7 @@ import Test.QuickCheck
 ---------------------------
 type E e = Either e
 
--- 
+--
 -- In GHCi, :set -XTypeApplications
 -- :type fmap @Maybe
 -- :type fmap @(Either _)
@@ -32,9 +32,15 @@ data MyEither a
   | MyJust a
 
 instance Functor MyEither where
-  fmap f MyNothing = MyNothing
+  fmap f MyNothing  = MyNothing
   fmap f (MyJust a) = MyJust (f a)
 
-data FixMePls a = FixMe  | Pls a  deriving (Eq, Show)
+data FixMePls a
+  = FixMe
+  | Pls a
+  deriving (Eq, Show)
 
+instance Functor FixMePls where
+  fmap _ FixMe   = FixMe
+  fmap f (Pls a) = Pls (f a)
 
