@@ -80,7 +80,7 @@ m3 = mappend m1 m2 -- == MyJust (Sum 50)
 
 -- List Applicative
 
-l1 = [(+1), (*2)] <*> [2, 4] -- == [3,5,4,8]
+list1 = [(+1), (*2)] <*> [2, 4] -- == [3,5,4,8]
 
 xs = [1,2,3]
 ys = [4,5,6]
@@ -241,4 +241,27 @@ ex22 = (,,,) <$> Just 90 <*> Just 10 <*> Just "Tierness" <*> pure [1,2,3]
 -- ===========================================================
 -- Applicative Laws
 -- ===========================================================
+
+-- (1) Identity
+
+-- pure id <*> v = v
+
+-- e.g:
+l11 = pure id <*> [1..5] -- == [1..5]
+l12 = pure id <*> Just "Applicative"
+l13 = pure id <*> Nothing
+l14 = pure id <*> Left "Error"
+l15 = pure id <*> Right 42
+l16 = pure id <*> (+1) $ 2
+
+-- (2) Composition
+
+-- pure (.) <*> u <*> v <*> w = u <*> (v <*> w)
+
+--e.g:
+l21 = pure (.) <*> [(+1)] <*> [(*2)] <*> [1,2,3]  -- compose and then apply
+l22 = [(+1)] <*> ([(*2)] <*> [1,2,3])             -- apply and then compose
+
+
+
 
