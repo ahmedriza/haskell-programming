@@ -262,6 +262,24 @@ l16 = pure id <*> (+1) $ 2
 l21 = pure (.) <*> [(+1)] <*> [(*2)] <*> [1,2,3]  -- compose and then apply
 l22 = [(+1)] <*> ([(*2)] <*> [1,2,3])             -- apply and then compose
 
+-- (3) Homomorphism
 
+-- pure f <*> pure x = pure (f x)
 
+l31 = pure (*10) <*> pure 1 :: Sum Int
+l32 = pure ((*10) 1) :: Sum Int
+      
+l33 = pure (*10) <*> pure 1 :: Maybe Int
+l34 = pure ((*10) 1) :: Maybe Int
+
+l35 = pure (*10) <*> pure 1 :: [Int]
+l36 = pure ((*10) 1) :: [Int]
+
+l37 = pure (*10) <*> pure 1 :: Either a Int
+l38 = pure ((*10) 1) :: Either a Int
+
+-- (4) Interchange
+
+-- u <*> pure y = pure ($ y) <*> u
+-- u represents a function wrapped in some structure, since on the left of <*> we need that.
 
