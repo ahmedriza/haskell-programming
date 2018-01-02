@@ -7,6 +7,9 @@ module Ch17 where
 
 import Control.Applicative
 import Data.Monoid
+import Test.QuickCheck
+import Test.QuickCheck.Checkers
+import Test.QuickCheck.Classes
 
 --- Note how the 1st Monoid instance of these tuples get combined
 
@@ -282,4 +285,57 @@ l38 = pure ((*10) 1) :: Either a Int
 
 -- u <*> pure y = pure ($ y) <*> u
 -- u represents a function wrapped in some structure, since on the left of <*> we need that.
+--
+-- ($ y) is sectioning the $ operator, i.e.
+-- ($ 2) is the same as (+10) $ 2
 
+l41 = Just (*10) <*> pure 1
+l42 = pure ($ 1) <*> Just (*10)
+
+-- Concretely
+mPure :: a -> Maybe a
+mPure = pure
+
+embed :: Num a => Maybe ((a -> b) -> b)
+embed = mPure ($ 2)
+
+mApply :: Maybe ((a -> b) -> b) -> Maybe (a -> b) -> Maybe b
+mApply = (<*>)
+
+myResult = pure ($ 2) `mApply` (Just (+10))
+
+-- Lining up the types for comparision
+--
+-- <*>    :: Applicative f     => f (x -> y)            -> f x            -> f y
+-- mApply ::             Maybe    Maybe ((a -> b) -> b) -> Maybe (a -> b) -> Maybe b
+--
+-- According to the interchange law, this should be true.
+--
+l43 = (Just (+2) <*> pure 2)
+l44 = pure ($ 2) <*> Just (+2)
+
+-- l43 == l44, since they both do the same thing.
+
+l45 = [(+1), (*2)] <*> pure 10
+l46 = pure ($ 10) <*> [(+1), (*2)]
+
+l47 = Just (+3) <*> pure 1
+l48 = pure ($ 1) <*> Just (+3)
+
+-- ===========================================================
+-- Property Testing
+-- ===========================================================
+
+data Bull = Fools | Twoo deriving (Eq, Show)
+
+instance Arbitrary Bull where
+  arbitrary = frequency [ (1, return Fools), (1, return Twoo) ]
+
+instance Monoid Bull where
+  mempty = Fools
+  mappend _ _ = Fools
+
+instance EqProp Bull where
+  (=-=) = eq
+
+  
