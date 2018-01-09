@@ -812,3 +812,16 @@ testFour' = do
 -- Combinations
 --
 
+stops :: String
+stops = "pbtdkg"
+
+vowels :: String
+vowels = "aeiou"
+
+-- Write the following function to generate the possible combinations of
+-- 3 input lists using liftA3 from Control.Applicative
+
+combos :: [a] -> [b] -> [c] -> [(a, b, c)]
+combos = liftA3 (,,)
+
+allCombinations = combos stops vowels stops
