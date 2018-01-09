@@ -741,7 +741,74 @@ instance (Eq a, Eq b) => EqProp (Three' a b) where
 instance Functor (Three' a) where
   fmap f (Three' x y z) = Three' x (f y) (f z)
 
+instance (Monoid a) => Applicative (Three' a) where
+  pure x = Three' mempty x x
+  (Three' u f1 f2) <*> (Three' v x y) = Three' (u <> v) (f1 x) (f2 y)
+
 testThree' :: IO ()
 testThree' = do
   quickBatch (functor (undefined :: Three' Int (Int, Int, Int)))
+  quickBatch (applicative (undefined :: Three' (Sum Int) (Int, Int, Int)))
+
+--------
+
+data Four a b c d = Four a b c d deriving (Eq, Show)
+
+fourGen :: (Arbitrary a, Arbitrary b, Arbitrary c, Arbitrary d) => Gen (Four a b c d)
+fourGen = do
+  s <- arbitrary
+  t <- arbitrary
+  u <- arbitrary
+  v <- arbitrary
+  return (Four s t u v)
+  
+instance (Arbitrary a, Arbitrary b, Arbitrary c, Arbitrary d) => Arbitrary (Four a b c d) where
+  arbitrary = fourGen
+
+instance (Eq a, Eq b, Eq c, Eq d) => EqProp (Four a b c d) where
+  (=-=) = eq
+
+instance Functor (Four a b c) where
+  fmap f (Four a b c d) = Four a b c (f d)
+
+instance (Monoid a, Monoid b, Monoid c) => Applicative (Four a b c) where
+  pure x = Four mempty mempty mempty x
+  Four u1 v1 w1 f <*> Four u2 v2 w2 x = Four (u1 <> u2) (v1 <> v2) (w1 <> w2) (f x)
+
+testFour :: IO ()
+testFour = do
+  quickBatch (functor (undefined :: Four Int Int Int (Int, Int, Int)))
+  quickBatch (applicative (undefined :: Four (Sum Int) (Sum Int) (Sum Int) (Int, Int, Int)))
+
+--------
+
+data Four' a b = Four' a a a b deriving (Eq, Show)
+
+fourGen' :: (Arbitrary a, Arbitrary b) => Gen (Four' a b)
+fourGen' = do
+  s <- arbitrary
+  t <- arbitrary
+  return (Four' s s s t)
+  
+instance (Arbitrary a, Arbitrary b) => Arbitrary (Four' a b) where
+  arbitrary = fourGen'
+
+instance (Eq a, Eq b) => EqProp (Four' a b) where
+  (=-=) = eq
+
+instance Functor (Four' a) where
+  fmap f (Four' a1 a2 a3 b) = Four' a1 a2 a3 (f b)
+
+instance (Monoid a) => Applicative (Four' a) where
+  pure x = Four' mempty mempty mempty x
+  Four' u1 v1 w1 f <*> Four' u2 v2 w2 x = Four' (u1 <> u2) (v1 <> v2) (w1 <> w2) (f x)
+
+testFour' :: IO ()
+testFour' = do
+  quickBatch (functor (undefined :: Four' Int (Int, Int, Int)))
+  quickBatch (applicative (undefined :: Four' (Sum Int) (Int, Int, Int)))
+
+--------
+-- Combinations
+--
 
