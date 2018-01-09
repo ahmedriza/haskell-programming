@@ -1,13 +1,18 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Ch17 where
 --
 -- Chapter 17: Applicative
 --
 
+import Data.Monoid
 import Control.Applicative
 import Data.Monoid
-import Test.QuickCheck
+import Test.QuickCheck.Arbitrary
+import Test.QuickCheck.Gen
 import Test.QuickCheck.Checkers
 import Test.QuickCheck.Classes
 
@@ -323,7 +328,7 @@ l47 = Just (+3) <*> pure 1
 l48 = pure ($ 1) <*> Just (+3)
 
 -- ===========================================================
--- Property Testing
+-- Property Testing Using checkers Library
 -- ===========================================================
 
 data Bull = Fools | Twoo deriving (Eq, Show)
@@ -338,4 +343,405 @@ instance Monoid Bull where
 instance EqProp Bull where
   (=-=) = eq
 
+xss :: [(String, String, Int)]
+xss = [("b", "w", 1 :: Int)]
+
+yss :: Maybe (Double, [Char], Int)
+yss = Just (1.0, "w", 1 :: Int)
+
+main :: IO ()
+main = do
+  quickBatch (monoid Twoo)
+  quickBatch (applicative xss)
+  quickBatch (applicative yss)
+
+-- ===========================================================
+-- ZipList Monoid
+-- ===========================================================
+
+-- The default monoid of lists in GHC Prelude is concatenation.
+-- ZipList has an Applicative instance based on zipping
+
+z0 = ZipList [Sum 0]
+z1 = ZipList [Sum 1]
+z1apply = (\i j -> i * j) <$> z1 <*> z1 -- == [1,4,9]
+
+-- However, there is no instance of Monoid provided, so we need to define one.
+
+-- this isn't going to work properly.
+instance Monoid a => Monoid (ZipList a) where
+  mempty = pure mempty 
+  mappend = liftA2 mappend
+
+-- already defined in Test.QuickCheck.Arbitrary
+-- instance Arbitrary a => Arbitrary (ZipList a) where
+--  arbitrary = ZipList <$> arbitrary
+
+-- already defined in Test.QuickCheck.Arbitrary
+-- instance Arbitrary a => Arbitrary (Sum a) where
+--  arbitrary = Sum <$> arbitrary
+
+instance Eq a => EqProp (ZipList a) where
+  (=-=) = eq
+
+zl2 = ZipList [1 :: Sum Int]
+
+test :: IO ()
+test = do
+  quickBatch (monoid zl2)
+
+------------------------------------------------------------
+-- Exercise: List Applicative
+------------------------------------------------------------
+
+data List a = Nil | Cons a (List a) deriving (Eq, Show)
+
+instance Functor List where
+  fmap _ Nil = Nil
+  fmap f (Cons a xs) = (Cons (f a)) (fmap f xs)
+
+instance Applicative List where
+  pure a = Cons a Nil
+  Nil <*> _ = Nil
+  _ <*> Nil = Nil
+  Cons f fs <*> as = append (fmap f as) (fs <*> as)
+
+listGen :: Arbitrary a => Gen (List a)
+listGen = do
+  a <- arbitrary
+  return (Cons a Nil)
   
+instance Arbitrary a => Arbitrary (List a) where
+  arbitrary = listGen
+
+l1 = Cons 10 Nil
+l2 = Cons 20 l1     -- Cons 20 (Cons 10 Nil)
+l3 = Cons 30 l2     -- Cons 30 (Cons 20 (Cons 10 Nil))
+l2' =  (+1) <$> l2  -- Cons 21 (Cons 11 Nil)
+
+append :: List a -> List a -> List a
+append Nil ys = ys
+append (Cons a xs) ys = Cons a (xs `append` ys)
+
+-- fold right
+fold :: (a -> b -> b) -> b -> List a -> b
+fold _ acc Nil = acc
+fold f acc (Cons x xs) = f x (fold f acc xs)
+
+concat' :: List (List a) -> List a
+concat' = fold append Nil
+
+-- write in terms of concat' and fmap
+flatMap :: (a -> List b) -> List a -> List b
+flatMap f as = concat' (fmap f as)
+
+toMyList = foldr Cons Nil
+xs' = toMyList [1,2,3] -- Cons 1 (Cons 2 (Cons 3 Nil))
+c = Cons
+
+f :: Num a => a -> List a
+f x = Cons x (Cons 9 Nil)
+
+ff = flatMap f xs'
+
+-- Expected Result
+lf = Cons (+1) (Cons (*2) Nil)
+lv = Cons 1 (Cons 2 Nil)
+lvlf = lf <*> lv -- = Cons 2 (Cons 3 (Cons 2 (Cons 4 Nil)))
+
+-- Compare with: [(+1), (*2)] <*> [1,2] = [2,3,2,4]
+
+apply' :: List (a -> b) -> List a -> List b
+apply' Nil _ = Nil
+apply' _ Nil = Nil
+apply' (Cons f fs) as = append (fmap f as) (apply' fs as)
+
+------------------------------------------------------------
+-- ZipList Applicative
+------------------------------------------------------------
+
+-- Implement the ZipList Applicative
+-- Use the checkers library to validate your Applicative instance
+
+take' :: Int -> List a -> List a
+take' i xs = go i xs
+  where
+    go _ Nil = Nil
+    go 0 xs = Nil
+    go acc (Cons x xs) = Cons x (go (acc - 1) xs)
+
+newtype ZipList' a = ZipList' (List a) deriving (Eq, Show)
+
+instance Eq a => EqProp (ZipList' a) where
+  xs =-= ys = xs' `eq` ys'
+    where xs' = let (ZipList' l) = xs
+                in take' 3000 l
+          ys' = let (ZipList' l) = ys
+                in take' 3000 l
+
+instance Functor (ZipList') where
+  fmap f (ZipList' xs) = ZipList' (fmap f xs)
+
+instance Applicative (ZipList') where
+  pure a = ZipList' (repeat' a)
+  ZipList' Nil <*> _ = ZipList' Nil
+  ZipList' fs  <*> ZipList' vs = ZipList' (zipWith' fs vs)
+
+repeat' :: a -> List a
+repeat' x = Cons x (repeat' x)
+
+zipWith' :: List (a -> b) -> List a -> List b 
+zipWith' _ Nil = Nil
+zipWith' Nil _ = Nil
+zipWith' (Cons f fs) (Cons v vs) = Cons (f v) (zipWith' fs vs)
+
+fs = (Cons (+9) (Cons (*2) (Cons (+8) Nil)))
+vs = (Cons 1 (Cons 2 (Cons 3 Nil)))
+zlf' = ZipList' fs
+zlv' = ZipList' vs
+
+zlfzlv = zlf' <*> zlv' -- ZipList' (Cons 10 (Cons 4 (Cons 11 Nil)))
+
+-- Infinite values
+zr = ZipList' (repeat' 1)
+zlfzr = zlf' <*> zr -- ZipList' (Cons 10 (Cons 2 (Cons 9 Nil)))
+
+-- check Applicative properties using checkers library
+
+instance Arbitrary a => Arbitrary (ZipList' a) where
+  -- Note that this will need an Arbitrary instance for the List type.
+  arbitrary = fmap ZipList' arbitrary
+
+testZipList :: IO ()
+testZipList = do
+  quickBatch (applicative (undefined :: ZipList' (Int, Int, Int)))
+
+------------------------------------------------------------
+-- Either and Validation Applicative
+------------------------------------------------------------
+
+type E = Either
+
+-- <*> :: f   (a -> b) ->   f a ->   f b
+-- <*> :: E e (a -> b) -> E e a -> E e b
+--
+-- pure :: a ->   f a
+-- pure :: a -> E e a
+
+-- Often an interesting part of the Applicative is the Monoid.
+-- One byproduct of this is that juast a you can have more than one
+-- valid Monoid for a given datatype, unlike Functor, Applicative
+-- can have more than one valid and lawful instance for a given
+-- datatype.
+
+-- Examples
+e11 :: Either e Int
+e11 = pure 1 :: Either e Int
+e12 = Right (+1) <*> Right 2 --- Right (3)
+e13 = Right (+1) <*> Left ":(" -- Left ":("
+e14 = Left ":(" <*> Right (+1) -- Left ":("
+e15 = Left ":(" <*> Left ("boo!") -- Left ":("
+
+-- Validation is similar to Either, but only differs in the Applicative instance
+
+data Validation err a = Failure err | Success a deriving (Eq, Show)
+
+instance Functor (Validation err) where
+  fmap f (Success a) = Success (f a)
+
+instance Monoid e => Applicative (Validation e) where
+  pure a = Success a
+  Success (f) <*> Success (v) = Success (f v)
+  Failure e1 <*> Failure e2 = Failure (mappend e1 e2)
+  _ <*> Failure err = Failure err
+  Failure err <*> _ = Failure err
+
+-- There are natual transformations from Validation to Either and the other way around.
+
+validToEither :: Validation e a -> Either e a
+validToEither (Failure e) = Left e
+validToEither (Success a) = Right a
+
+eitherToValid :: Either e a -> Validation e a
+eitherToValid (Left e) = Failure e
+eitherToValid (Right a) = Success a
+
+type Id' = Either Int Int -> Either Int Int
+type Id'' = Validation Int Int -> Validation Int Int
+testNaturalTransform :: IO ()
+testNaturalTransform = do
+  let id1 :: Id' = (validToEither . eitherToValid)
+  let id2 :: Id'' = (eitherToValid . validToEither)
+  return ()
+
+data Errors = DividByZero | StackOverflow deriving (Eq, Show)
+
+-- success = Success (+1) <*> Success (1)
+
+failure = Success (+1) <*> Failure [StackOverflow]
+failure' = Failure [StackOverflow] <*> Success (+1)
+failures = Failure [DividByZero] <*> Failure[StackOverflow]
+
+------------------------------------------------------------
+-- Chapter Exercises
+------------------------------------------------------------
+
+-- (1)
+type ListType = []
+
+pureList :: a -> [] a
+pureList = pure
+
+applyList :: [a -> b] -> [a] -> [b]
+applyList = (<*>)
+
+-- (2)
+pureIO :: a -> IO (a)
+pureIO = pure
+
+applyIO :: IO (a -> b) -> IO (a) -> IO (b)
+applyIO = (<*>)
+-- applyIO (pure(++ "hello")) getLine
+
+-- (3)
+-- (,) a
+pureTuple :: Monoid b => a -> (,) b a 
+pureTuple = pure
+-- pure 1 :: (Sum Int, Int)
+
+applyTuple :: Monoid b => (,) b (a -> b) -> (,) b a -> (,) b b
+applyTuple = (<*>)
+
+-- (Sum 10, (+1)) `applyTuple` (Sum 20, 10) -- (Sum {getSum = 30},Sum {getSum = 11})
+
+-- (4)
+-- (->) e
+
+pureFun :: a -> (->) e a
+pureFun = pure
+
+applyFun :: (->) e (a -> b) -> (->) e a -> (->) e b
+applyFun = (<*>)
+
+
+----
+
+data Two a b = Two a b deriving (Eq, Show)
+
+instance Functor (Two a) where
+  fmap f (Two a b) = Two a (f b)
+
+instance Monoid a => Applicative (Two a) where
+  pure x = Two mempty x
+  (<*>) (Two u f) (Two v x) = Two (mappend u v) (f x)
+
+pureTwo :: Monoid b => a -> Two b a
+pureTwo x = pure x
+
+pureTwoTest = pureTwo 1 :: Two (Sum Int) Int -- pureTwo 1 :: Two (Sum Int) Int
+
+applyTwo :: Monoid b => Two b (a -> b) -> Two b a -> Two b b
+applyTwo = (<*>)
+
+applyTwoTest = (Two (Sum 10) (*10)) `applyTwo` (Two (Sum 20) 5) -- Two (Sum {getSum = 30}) 50
+
+instance EqProp (Sum Int) where
+  (=-=) = eq
+
+instance (Eq a, Eq b) => EqProp (Two a b) where
+  (=-=) = eq
+
+twoGen :: (Arbitrary a, Arbitrary b) => Gen (Two a b)
+twoGen = do
+  x <- arbitrary
+  y <- arbitrary
+  return (Two x y)
+
+instance (Arbitrary a, Arbitrary b) => Arbitrary (Two a b) where
+  arbitrary = twoGen
+
+-- test Applicative properties of Pair
+
+testTwo :: IO ()
+testTwo = do
+  quickBatch (applicative (undefined :: Two (Sum Int) (Int, Int, Int)))
+
+---------
+
+data Pair a = Pair a a deriving (Eq, Show)
+
+instance Functor (Pair) where
+  fmap f (Pair x y) = Pair (f x) (f y)
+
+instance Applicative (Pair) where
+  pure a = Pair a a
+  (Pair f1 f2) <*> (Pair x y) = Pair (f1 x) (f2 y)
+
+pairGen :: (Arbitrary a) => Gen (Pair a)
+pairGen = do
+  x <- arbitrary
+  return (Pair x x)
+
+instance (Arbitrary a) => Arbitrary (Pair a) where
+  arbitrary = pairGen
+
+instance (Eq a) => EqProp (Pair a) where
+  (=-=) = eq
+
+testPair :: IO ()
+testPair = do
+  quickBatch (functor (undefined :: Pair (Int, Int, Int)))
+  quickBatch (applicative (undefined :: Pair (Double, Int, String)))
+
+--------
+
+data Three a b c = Three a b c deriving (Eq, Show)
+
+instance Functor (Three a b) where
+  fmap f (Three x y z) = Three x y (f z)
+
+instance (Monoid a, Monoid b) => Applicative (Three a b) where
+  pure a = Three mempty mempty a
+  (Three u v f3) <*> (Three x y z) = Three (u <> x) (v <> y) (f3 z)
+
+threeGen :: (Arbitrary a, Arbitrary b, Arbitrary c) => Gen (Three a b c)
+threeGen = do
+  x <- arbitrary
+  y <- arbitrary
+  z <- arbitrary
+  return (Three x y z)
+
+instance (Arbitrary a, Arbitrary b, Arbitrary c) => Arbitrary (Three a b c) where
+  arbitrary = threeGen
+
+instance (Eq a, Eq b, Eq c) => EqProp (Three a b c) where
+  (=-=) = eq
+
+testThree :: IO ()
+testThree = do
+  quickBatch (functor (undefined :: Three Int Int (Int, Int, Int)))
+  quickBatch (applicative (undefined :: Three (Sum Int) (Sum Int) (Int, Int, Int)))
+
+--------
+
+data Three' a b = Three' a b b deriving (Eq, Show)
+
+threeGen' :: (Arbitrary a, Arbitrary b) => Gen (Three' a b)
+threeGen' = do
+  x <- arbitrary
+  y <- arbitrary
+  return (Three' x y y)
+
+instance (Arbitrary a, Arbitrary b) => Arbitrary (Three' a b) where
+  arbitrary = threeGen'
+
+instance (Eq a, Eq b) => EqProp (Three' a b) where
+  (=-=) = eq
+
+instance Functor (Three' a) where
+  fmap f (Three' x y z) = Three' x (f y) (f z)
+
+testThree' :: IO ()
+testThree' = do
+  quickBatch (functor (undefined :: Three' Int (Int, Int, Int)))
+
