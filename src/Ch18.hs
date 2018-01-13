@@ -69,5 +69,48 @@ twiceWhenEven' xs = xs >>= (\x -> if even x then [x*x, x*x] else [x*x])
 
 -- Maybe Monad
 
+maybeTest :: Maybe Int
+maybeTest = do
+  x <- (Just 20)
+  y <- (Just 30)
+  return (x+y)
+
+maybeTest' = (Just 30)
+  >>= (\x -> (Just 20)
+        >>= (\y -> return (x + y)))
+
+data Cow = Cow {
+  name :: String
+  , age :: Int
+  , weight :: Int
+  } deriving (Show, Eq)
+
+noEmpty :: String -> Maybe String
+noEmpty "" = Nothing
+noEmpty str = Just str
+
+nonNegative :: Int -> Maybe Int
+nonNegative n | n >= 0 = Just n
+              | otherwise = Nothing
+
+weightCheck :: Cow -> Maybe Cow
+weightCheck c =
+  let w = weight c
+      n = name c
+  in if n == "Bess" && w > 99
+     then Nothing
+     else Just c
+
+mkSphericalCow :: String -> Int -> Int -> Maybe Cow
+mkSphericalCow name' age' weight' =
+  case noEmpty name' of
+    Nothing -> Nothing
+    Just nammy -> case nonNegative age' of
+      Nothing -> Nothing
+      Just agey -> case nonNegative weight' of
+        Nothing -> Nothing
+        Just weighty -> weightCheck (Cow nammy agey weighty)
+
+-- Clean up using do syntax
 
 
