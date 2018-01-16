@@ -419,9 +419,64 @@ instance Eq a =>  EqProp (Identity a) where
 
 -- (4)
 
-data List a = Nil | Cons a (List a)
+data List a = Nil | Cons a (List a) deriving (Eq, Show)
 
+instance Functor (List) where
+  fmap f Nil = Nil
+  fmap f (Cons a xs) = Cons (f a) (fmap f xs)
 
+instance Applicative (List) where
+  pure a = Cons a Nil
+  Nil <*> _ = Nil
+  _ <*> Nil = Nil
+  (Cons f fs) <*> xs = append (fmap f xs) (fs <*> xs)
+
+instance Monad (List) where
+  Nil >>= _ = Nil
+  (Cons x xs) >>= f = append (f x) (xs >>= f)
+
+listGen :: Arbitrary a => Gen (List a)
+listGen = do
+  a <- arbitrary
+  return (Cons a Nil)
+  
+instance Arbitrary a => Arbitrary (List a) where
+  arbitrary = listGen
+
+instance Eq a => EqProp (List a) where
+  (=-=) = eq
+
+append :: List a -> List a -> List a
+append Nil ys = ys
+append (Cons x xs) ys = Cons x (xs `append` ys)
+
+apply' :: List (a -> b) -> List a -> List (List b)
+apply' Nil _ = Nil
+apply' _ Nil = Nil
+apply' (Cons f fs) xs = Cons (fmap f xs) (apply' fs xs)
+
+concat' :: List (List a) -> List a
+concat' Nil = Nil
+concat' (Cons Nil ys) = concat' ys
+concat' (Cons (Cons x xs) ys) = Cons x (concat' (Cons xs ys))
+
+l0 :: List (Integer -> Integer)
+l0 = Cons (+1) (Cons (*10) Nil)
+
+l1 :: List Integer
+l1 = Cons 10 Nil
+
+l2 :: List Integer
+l2 = fmap (+1) l1
+
+l3 :: List (List Integer)
+l3 = Cons l2 (Cons l1 Nil)
+
+l4 = fmap (*10) l1
+
+l5 = Cons l4 l3
+
+---
 
 testCountMe :: IO ()
 testCountMe = do
@@ -447,6 +502,10 @@ testIdentity = do
   quickBatch $ applicative (undefined :: Identity (Int, Int, Int))
   quickBatch $ monad (undefined :: Identity (Int, Int, Int))
 
-
+testList :: IO ()
+testList = do
+  quickBatch $ functor (undefined :: List (Int, Int, Int))
+  quickBatch $ applicative (undefined :: List (Int, Int, Int))
+  quickBatch $ monad (undefined :: List (Int, Int, Int))
 
 
