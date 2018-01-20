@@ -1,6 +1,6 @@
 module Ch18 where
 
-import Control.Monad (join, (>=>))
+import Control.Monad (join, (>=>), liftM2)
 
 import Test.QuickCheck.Arbitrary
 import Test.QuickCheck.Gen
@@ -508,4 +508,56 @@ testList = do
   quickBatch $ applicative (undefined :: List (Int, Int, Int))
   quickBatch $ monad (undefined :: List (Int, Int, Int))
 
+
+-- Write the following functions using the methods provided by Monad and Functor.
+-- Using stuff like identity and composition is fine.
+
+-- (1)
+-- j :: Monad m => m (m a) -> m a
+-- Expected behaviour
+-- j [[1,2], [], [3]]= [1,2,3]
+
+-- j (Just (Just 1)) = Just 1
+--
+-- j (Just Nothing) = Nothing
+--
+-- j Nothing = Nothing
+--
+j :: Monad m => m (m a) -> m a
+j xs = xs >>= id
+
+-- (2)
+-- l1 :: Monad m => (a -> b) -> m a -> m b
+--
+l11 :: Monad m => (a -> b) -> m a -> m b
+l11 f xs = f <$> xs
+
+-- (3)
+l22 :: Monad m => (a -> b -> c) -> m a -> m b -> m c
+l22 f m1 m2 = do
+  x <- m1
+  y <- m2
+  return (f x y)
+
+-- (4)
+a :: Monad m => m a -> m (a -> b) -> m b
+a m1 mf = do
+  x <- m1
+  f <- mf
+  return (f x)
+
+-- (5) You'll need recursion for this one
+meh :: Monad m => [a] -> (a -> m b) -> m [b]
+meh [] _ = return []
+meh (x:xs) f = do
+  x' <- f x
+  (x':) <$> (meh xs f)
+
+mehEx = meh [1,2,3] (\i -> Just (i * 10)) -- Just [10, 20, 30]
+
+-- (6) -- Hint: reuse meh 
+flipType :: (Monad m) => [m a] -> m [a]
+flipType ms = meh ms id
+
+----------------------------------
 
