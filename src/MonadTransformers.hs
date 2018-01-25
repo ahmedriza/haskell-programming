@@ -4,6 +4,8 @@
 -- :set -XOverloadedStrings
 --
 
+module MonadTransformers where
+
 import Data.Text
 import qualified Data.Text.IO as T
 import Data.Map as Map
@@ -80,10 +82,11 @@ instance Applicative (EitherIO e) where
 
 instance Monad (EitherIO e) where
   return = pure
-  x >>= f = do
-    x' <- x
-    fx' <- f x'
-    EitherIO $ return (Right fx')
+  x >>= f = EitherIO $ do
+    x' <- runEitherIO x
+    case x' of
+      Left e -> return (Left e)
+      Right x'' -> runEitherIO (f x'')
 
 -- (>>=) :: Monad m => m            a -> (a         -> m           b) -> m  b
 -- (>>=) ::            IO (Right Int) -> (Right Int -> IO (Right Int) -> IO (Right Int)
@@ -107,19 +110,24 @@ monadEx y = y >>= (\x' -> return $ fmap (+1) x')
 -- liftA2 :: (<*>)                      -> IO (Right (Int -> Int)) -> IO (Right Int) -> IO (Right Int)
 
 
+liftEither :: Either e a -> EitherIO e a
+liftEither x = EitherIO (return x)
+
+liftIO :: IO a -> EitherIO e a
+liftIO x = EitherIO (fmap Right x)
+
 getToken' :: EitherIO LoginError Text
 getToken' = do
-  -- Need to convert (IO ()) to EitherIO e ()
-  -- T.putStrLn "Enter email address:"
-  -- email <- T.getLine
-  EitherIO (return (getDomain ""))
+  liftIO (T.putStrLn "Enter email address:")
+  input <- liftIO T.getLine
+  liftEither (getDomain "")
 
+userLogin' :: EitherIO LoginError Text
+userLogin' = do
+  token <- getToken'
+  userpw <- maybe (liftEither (Left NoSuchUser)) return (Map.lookup token users)
+  password <- liftIO (T.putStrLn "Enter your password:"  >> T.getLine)
 
-ahmed = "Ahmed is Sami's Dad"
-
-eva = "Eva is Sami's Mum"
-
-celia = "Sami's cousin"
-
-speed = 200000
-speed_of_high_speed_train = 20000000
+  if userpw == password
+    then return token
+    else liftEither (Left WrongPassword)
