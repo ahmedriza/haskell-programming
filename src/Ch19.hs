@@ -201,4 +201,39 @@ maybeTest = do
     c2 <- lift getC
     return (a, b, c1, c2)
 
-data Error = Error deriving Show
+------------------
+
+data User = User { username :: String, email :: String, password :: String } deriving Show
+
+readUsername :: MaybeT IO String
+readUsername = MaybeT $ do
+  str <- getLine
+  if length str < 5 then
+    return Nothing
+    else return (Just str)
+
+readEmail :: MaybeT IO String
+readEmail = MaybeT $ return (Just "ahmed@gmail.com")
+
+readPassword :: MaybeT IO String
+readPassword = MaybeT $ return (Just "ahmed")
+
+getUser :: MaybeT IO User
+getUser = readUsername >>=
+  (\user -> readEmail >>=
+    (\email -> readPassword >>=
+      (\password -> return (User user email password))))
+
+getUser' :: MaybeT IO User
+getUser' = do
+  user <- readUsername
+  email <- readEmail
+  password <- readPassword
+  return $ User user email password
+
+testUser :: IO ()
+testUser = do
+  maybeUser <- runMaybeT getUser'
+  case maybeUser of
+    Nothing -> print "Could not login"
+    Just user -> print user
