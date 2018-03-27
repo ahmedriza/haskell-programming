@@ -11,7 +11,7 @@ x :: IO Int
 x = return 10
 
 xs :: [IO Int]
-xs = map (return) [1,2,3]
+xs = map return [1,2,3]
 
 sxs :: IO [Int]
 sxs = sequence xs
@@ -28,6 +28,11 @@ data Person = Person {
   lastName :: String
   } deriving Show
 
+data Address = Address {
+  firstLine :: String,
+  postCode :: String
+} deriving Show
+
 data Err = String
 
 validateName :: String -> Either Err String 
@@ -35,3 +40,8 @@ validateName = undefined
 
 validateLastName :: String -> Either Err String 
 validateLastName = undefined
+
+main :: IO ()
+main = do
+  print "hello ahmed, how are you doing mate?"
+  return ()

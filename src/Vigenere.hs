@@ -43,14 +43,14 @@ gg msg key = zip (map ord msg) (ff msg key)
 hh :: (Int, Int) -> Int
 hh (a, b) = (a + b) `mod` 128
 
-enc' msg_ key_ = map chr (map hh (gg msg_ key_))
+enc' msg_ key_ = map (chr . hh) (gg msg_ key_)
 
 -------------------------------------------------------------------------------------
 
 kk :: (Int, Int) -> Int
 kk (a, b) = (a - b) `mod` 128 -- if (a < b) then (128 + a - b) else (a - b)
 
-dec' msg key = map chr $ map kk $ zip (map ord msg) (ff msg key)
+dec' msg key = map (chr . kk) $ zip (map ord msg) (ff msg key)
 
 -------------------------------------------------------------------------------------
 
